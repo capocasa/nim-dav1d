@@ -26,8 +26,12 @@ cPlugin:
 
   # Strip prefix from procs
   proc onSymbol*(sym: var Symbol) {.exportc, dynlib.} =
-    if sym.name.toLowerAscii.startsWith("dav1d_"):
+    if sym.name.startsWith("DAV1D_"):
       sym.name = sym.name.substr(6)
+    if sym.name.startsWith("dav1d_"):
+      sym.name = sym.name.substr(6)
+    if sym.name.startsWith("Dav1d"):
+      sym.name = sym.name.substr(5)
 
 # supplement automatic conversions with hand-edits
 #[
