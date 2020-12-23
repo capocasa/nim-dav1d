@@ -32,6 +32,19 @@ cPlugin:
       sym.name = sym.name.substr(6)
     if sym.name.startsWith("Dav1d"):
       sym.name = sym.name.substr(5)
+      # remove prefixes for brevity
+
+    #[
+    if sym.name in ["Data", "Picture"]:
+      sym.name &= "Obj"
+      # Add "Obj" postfix to objects to be used by a traced
+      # reference to have a finalizer
+    ]#
+    
+    if sym.name in ["Data", "Picture"]:
+      sym.name = "c" & sym.name
+      # Add "c" prefix to objects to avoid naming conflicts with
+      # wrapping objects
 
 # supplement automatic conversions with hand-edits
 #[
