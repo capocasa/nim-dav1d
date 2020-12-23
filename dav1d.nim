@@ -7,7 +7,8 @@ import strutils
 
 export cPicture
 
-import std/sha1
+{.passL: "-lpthread -ldl".}
+  # dav1d uses pthread and dl
 
 type
   InitError* = object of ValueError
@@ -47,9 +48,6 @@ proc newDecoder*(): Decoder =
 
 proc cleanup(data: Data) =
   data_unref(data.raw)
-
-proc dump(data: ptr uint8, size: uint): string =
-  "ptr uint8, size/" & $secureHash(toOpenArray(cast[cstring](data), 0, size.int))
 
 proc newData*(data: ptr uint8, size: uint): Data =
   new(result, cleanup)
