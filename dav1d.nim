@@ -55,6 +55,9 @@ proc newData*(data: ptr uint8, size: uint): Data =
   let internalPointer = data_create(result.raw, size)
   if internalPointer == nil:
     raise newException(DecodeError, "Could not create internal decoder object")
+  
+  # Did not find an obvious way to create a Data object with demuxer-allocated memory
+  # so copy provided data into dav1d's memory pool- it's the encoded data, not *that* big, will do for now
   copyMem(internalPointer, data, size)
 
 proc send*(decoder: Decoder, data: Data) =
