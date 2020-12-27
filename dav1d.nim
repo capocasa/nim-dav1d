@@ -72,7 +72,7 @@ proc cleanup(picture: Picture) =
 
 proc getPicture*(decoder: Decoder): Picture =
   new(result, cleanup)
-  result.raw = cast[ptr cPicture](alloc(sizeof(cPicture)))
+  result.raw = cast[ptr cPicture](alloc0(sizeof(cPicture)))
   let r = get_picture(decoder.context, result.raw)
   if r < 0:
     if abs(r) == EAGAIN:
