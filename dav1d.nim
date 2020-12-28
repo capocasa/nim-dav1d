@@ -49,18 +49,21 @@ proc newDecoder*(): Decoder =
 proc cleanup(data: Data) =
   data_unref(data.raw)
 
-proc newData*(data: ptr UncheckedArray[byte], len : int): Data =
+proc newData*(encoded: openArray[byte]): Data =
   ## Create a new data object from an encoded data chunk that can
   ## be sent to the decoder.
   new(result, cleanup)
   result.raw = cast[ptr cData](alloc(sizeof(cData)))
-  let internalPointer = data_create(result.raw, len.uint)
+  let internalPointer = data_create(result.raw, (encoded.len).uint)
   if internalPointer == nil:
     raise newException(DecodeError, "Could not create internal decoder object")
   
   # Did not find an obvious way to create a Data object with demuxer-allocated memory
   # so copy provided data into dav1d's memory pool- it's the encoded data, not *that* big, will do for now
-  copyMem(internalPointer, data, len)
+  copyMem(internalPointer, encoded[0].unsafeAddr, encoded.len)
+
+template newData*(encoded: ptr UncheckedArray[byte], len: int): Data =
+  newData(toOpenArray(encoded, 0, len-1))
 
 proc send*(decoder: Decoder, data: Data) =
   let r = send_data(decoder.context, data.raw)
@@ -68,6 +71,12 @@ proc send*(decoder: Decoder, data: Data) =
     if abs(r) == EAGAIN:
       raise newException(BufferError, "could not send data, must consume picture first")
     raise newException(DecodeError, "Decoding error while sending data: $#" % r.formatError)
+
+template send*(decoder: Decoder, encoded: openArray[byte]) =
+  send(decoder, newData(encoded))
+
+template send*(decoder: Decoder, encoded: ptr UncheckedArray[byte], len: int) =
+  send(decoder, newData(encoded, len))
 
 proc cleanup(picture: Picture) =
   picture_unref(picture.raw)
