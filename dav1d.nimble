@@ -9,4 +9,4 @@ license       = "BSD2"
 # Dependencies
 
 requires "nim >= 1.4.2"
-requires "nimterop"
+requires "https://github.com/capocasa/nimterop#a2af4b6"
