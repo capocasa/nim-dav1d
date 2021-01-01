@@ -1,4 +1,9 @@
 
+## dav1d is an AV1 video codec implementation created by the kind folks at VideoLAN and is widely used.
+## 
+## This Nim wrapper puts a low-cost memory safe high level on top of it. If the low-level API is required,
+## applications can include dav1d/wrapper directly.
+
 import dav1d/wrapper
 
 import posix
@@ -23,15 +28,18 @@ type
     ## Holds the initialization data for a Dav1d decoder
     settings: Settings
     context: ptr Context
-    ## Reference to put the decoder on the heap so collecting it will call the finalizer,
-    ## which in turn frees the wrapped library's untraced heap memory.
   Decoder* = ref DecoderObj
+    ## which in turn frees the wrapped library's untraced heap memory.
   PictureObj* = object
+    ## A container object for one frame of decoded video data
     raw*: ptr cPicture
   Picture* = ref PictureObj
+    ## A memory safe reference to one frame of decoded video data
   DataObj* = object
+    ## A container objcet for low-lavel encoded video data
     raw*: ptr cData
   Data* = ref DataObj
+    ## A memory safe reference to encoded video data
 
 proc cleanup(decoder: Decoder) =
   close(decoder.context.addr)
@@ -63,9 +71,15 @@ proc newData*(encoded: openArray[byte]): Data =
   copyMem(internalPointer, encoded[0].unsafeAddr, encoded.len)
 
 template newData*(encoded: ptr UncheckedArray[byte], len: int): Data =
+  ## Create a new data object from an unchecked array and a length instead of an OpenArray
+  ## This can also be used to send a pointer and a length, by casting it to the UncheckedArray[byte] type
   newData(toOpenArray(encoded, 0, len-1))
 
 proc send*(decoder: Decoder, data: Data) =
+  ## Actually send the data to the decoder. It will be available to retrieve using the getPicture object
+  ## If a BufferError is raised, then no more data can be queued- getPicture needs to be called first.
+  ## This error should be caught, and responeded to.
+  ## If a DecodeError is raised, then something actually is wrong with the encoded data
   let r = send_data(decoder.context, data.raw)
   if r < 0:
     if abs(r) == EAGAIN:
@@ -73,15 +87,21 @@ proc send*(decoder: Decoder, data: Data) =
     raise newException(DecodeError, "Decoding error while sending data: $#" % r.formatError)
 
 template send*(decoder: Decoder, encoded: openArray[byte]) =
+  ## Convenience function to send array data to the encoded without explicitly creating
+  ## a data object. toOpenArray can be used to send further types of data
   send(decoder, newData(encoded))
 
 template send*(decoder: Decoder, encoded: ptr UncheckedArray[byte], len: int) =
+  ## Convenience function to send array-and-length data to dav1d
   send(decoder, newData(encoded, len))
 
 proc cleanup(picture: Picture) =
   picture_unref(picture.raw)
 
 proc getPicture*(decoder: Decoder): Picture =
+  ## Retrieve one frame of decoded video data.
+  ## If a BufferError is raised, not enough data is available- call send first and try again.
+  ## If a DecodeError is raised, something is actually wrong with the decoding process.
   new(result, cleanup)
   result.raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
   let r = get_picture(decoder.context, result.raw)
