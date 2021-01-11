@@ -44,6 +44,10 @@ type
 proc cleanup(decoder: Decoder) =
   close(decoder.context.addr)
 
+proc flush*(decoder: Decoder) =
+  ## Reset the decoder. Do this before a seek
+  flush(decoder.context)
+
 template formatError(code: cint): string =
   $strerror(abs(code))
 
@@ -61,7 +65,7 @@ proc newData*(encoded: openArray[byte]): Data =
   ## Create a new data object from an encoded data chunk that can
   ## be sent to the decoder.
   new(result, cleanup)
-  result.raw = cast[ptr cData](allocShared(sizeof(cData)))
+  result.raw = cast[ptr cData](alloc(sizeof(cData)))
   let internalPointer = data_create(result.raw, (encoded.len).uint)
   if internalPointer == nil:
     raise newException(DecodeError, "Could not create internal decoder object")
@@ -103,7 +107,7 @@ proc getPicture*(decoder: Decoder): Picture =
   ## If a BufferError is raised, not enough data is available- call send first and try again.
   ## If a DecodeError is raised, something is actually wrong with the decoding process.
   new(result, cleanup)
-  result.raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
+  result.raw = cast[ptr cPicture](alloc0(sizeof(cPicture)))
   let r = get_picture(decoder.context, result.raw)
   if r < 0:
     if abs(r) == EAGAIN:
