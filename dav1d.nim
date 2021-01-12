@@ -60,12 +60,13 @@ proc newDecoder*(): Decoder =
 
 proc cleanup(data: Data) =
   data_unref(data.raw)
+  deallocShared(data.raw)
 
 proc newData*(encoded: openArray[byte]): Data =
   ## Create a new data object from an encoded data chunk that can
   ## be sent to the decoder.
   new(result, cleanup)
-  result.raw = cast[ptr cData](alloc(sizeof(cData)))
+  result.raw = cast[ptr cData](allocShared(sizeof(cData)))
   let internalPointer = data_create(result.raw, (encoded.len).uint)
   if internalPointer == nil:
     raise newException(DecodeError, "Could not create internal decoder object")
@@ -101,13 +102,14 @@ template send*(decoder: Decoder, encoded: ptr UncheckedArray[byte], len: int) =
 
 proc cleanup(picture: Picture) =
   picture_unref(picture.raw)
+  deallocShared(picture.raw)
 
 proc getPicture*(decoder: Decoder): Picture =
   ## Retrieve one frame of decoded video data.
   ## If a BufferError is raised, not enough data is available- call send first and try again.
   ## If a DecodeError is raised, something is actually wrong with the decoding process.
   new(result, cleanup)
-  result.raw = cast[ptr cPicture](alloc0(sizeof(cPicture)))
+  result.raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
   let r = get_picture(decoder.context, result.raw)
   if r < 0:
     if abs(r) == EAGAIN:
