@@ -101,11 +101,13 @@ proc getPicture*(decoder: Decoder): Picture =
   ## Retrieve one frame of decoded video data.
   ## If a BufferError is raised, not enough data is available- call send first and try again.
   ## If a DecodeError is raised, something is actually wrong with the decoding process.
-  new(result, cleanup)
-  result.raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
-  let r = get_picture(decoder.context, result.raw)
+  var raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
+  let r = get_picture(decoder.context, raw)
   if r < 0:
+    deallocShared(raw)
     if abs(r) == EAGAIN:
       raise newException(BufferError, "could not consume picture, must send more data first")
     raise newException(DecodeError, "Decoding error while consuming picture: $#" % r.formatError)
+  new(result, cleanup)
+  result.raw = raw
 
