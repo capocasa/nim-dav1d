@@ -35,10 +35,7 @@ type
     raw*: ptr cPicture
   Picture* = ref PictureObj
     ## A memory safe reference to one frame of decoded video data
-  DataObj* = object
-    ## A container objcet for low-lavel encoded video data
-    raw*: cData
-  Data* = ref DataObj
+  Data* = ref cData
     ## A memory safe reference to encoded video data
 
 proc cleanup(decoder: Decoder) =
@@ -58,17 +55,16 @@ proc newDecoder*(): Decoder =
   if 0 != open(result.context.addr, result.settings.addr):
     raise newException(InitError, "Failed to initialize Dav1d av1 decoder")
 
-proc cleanup(data: Data) =
-  discard
-
-proc cleanup(buf: ptr uint8; cookie: pointer) {.cdecl.} =
-  discard
+proc cCleanup(buf: ptr uint8; cookie: pointer) {.cdecl.} =
+  var data = cast[Data](cookie)
+  GC_unref(data)
 
 proc newData*(encoded: openArray[byte]): Data =
   ## Create a new data object from an encoded data chunk that can
   ## be sent to the decoder.
-  new(result, cleanup)
-  let r = data_wrap(result.raw.addr, encoded[0].unsafeAddr, encoded.len.uint, cleanup, nil)
+  new(result)
+  GC_ref(result)
+  let r = data_wrap(result[].addr, encoded[0].unsafeAddr, encoded.len.uint, cCleanup, cast[pointer](result))
   if r < 0:
     raise newException(DecodeError, r.formatError)
 
@@ -82,7 +78,7 @@ proc send*(decoder: Decoder, data: Data) =
   ## If a BufferError is raised, then no more data can be queued- getPicture needs to be called first.
   ## This error should be caught, and responeded to.
   ## If a DecodeError is raised, then something actually is wrong with the encoded data
-  let r = send_data(decoder.context, data.raw.addr)
+  let r = send_data(decoder.context, data[].addr)
   if r < 0:
     if abs(r) == EAGAIN:
       raise newException(BufferError, "could not send data, must consume picture first")
