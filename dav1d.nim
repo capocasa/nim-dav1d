@@ -26,8 +26,8 @@ type
     ## and decoding resumed when the condition has been resolved.
   DecoderObj* = object
     ## Holds the initialization data for a Dav1d decoder
-    settings: Settings
-    context: ptr Context
+    settings*: Settings
+    context*: ptr Context
   Decoder* = ref DecoderObj
     ## which in turn frees the wrapped library's untraced heap memory.
   PictureObj* = object
