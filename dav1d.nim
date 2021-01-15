@@ -37,7 +37,7 @@ type
     ## A memory safe reference to one frame of decoded video data
   DataObj* = object
     ## A container objcet for low-lavel encoded video data
-    raw*: ptr cData
+    raw*: cData
   Data* = ref DataObj
     ## A memory safe reference to encoded video data
 
@@ -59,21 +59,18 @@ proc newDecoder*(): Decoder =
     raise newException(InitError, "Failed to initialize Dav1d av1 decoder")
 
 proc cleanup(data: Data) =
-  data_unref(data.raw)
-  deallocShared(data.raw)
+  discard
+
+proc cleanup(buf: ptr uint8; cookie: pointer) {.cdecl.} =
+  discard
 
 proc newData*(encoded: openArray[byte]): Data =
   ## Create a new data object from an encoded data chunk that can
   ## be sent to the decoder.
   new(result, cleanup)
-  result.raw = cast[ptr cData](allocShared(sizeof(cData)))
-  let internalPointer = data_create(result.raw, (encoded.len).uint)
-  if internalPointer == nil:
-    raise newException(DecodeError, "Could not create internal decoder object")
-  
-  # Did not find an obvious way to create a Data object with demuxer-allocated memory
-  # so copy provided data into dav1d's memory pool- it's the encoded data, not *that* big, will do for now
-  copyMem(internalPointer, encoded[0].unsafeAddr, encoded.len)
+  let r = data_wrap(result.raw.addr, encoded[0].unsafeAddr, encoded.len.uint, cleanup, nil)
+  if r < 0:
+    raise newException(DecodeError, r.formatError)
 
 template newData*(encoded: ptr UncheckedArray[byte], len: int): Data =
   ## Create a new data object from an unchecked array and a length instead of an OpenArray
@@ -85,7 +82,7 @@ proc send*(decoder: Decoder, data: Data) =
   ## If a BufferError is raised, then no more data can be queued- getPicture needs to be called first.
   ## This error should be caught, and responeded to.
   ## If a DecodeError is raised, then something actually is wrong with the encoded data
-  let r = send_data(decoder.context, data.raw)
+  let r = send_data(decoder.context, data.raw.addr)
   if r < 0:
     if abs(r) == EAGAIN:
       raise newException(BufferError, "could not send data, must consume picture first")
