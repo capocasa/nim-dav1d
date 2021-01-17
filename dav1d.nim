@@ -5,6 +5,7 @@
 ## applications can include dav1d/wrapper directly.
 
 import dav1d/wrapper
+import system/ansi_c
 
 import posix
   # dav1d uses posix error codes
@@ -33,6 +34,8 @@ type
   PictureObj* = object
     ## A container object for one frame of decoded video data
     raw*: ptr cPicture
+    when compileOption("threads"):
+      creatingThread*: int
   Picture* = ref PictureObj
     ## A memory safe reference to one frame of decoded video data
   Data* = ref cData
@@ -93,21 +96,30 @@ template send*(decoder: Decoder, encoded: ptr UncheckedArray[byte], len: int) =
   ## Convenience function to send array-and-length data to dav1d
   send(decoder, newData(encoded, len))
 
+template doCleanup(picture: Picture) =
+    picture_unref(picture.raw)
+    c_free(picture.raw)
+
 proc cleanup(picture: Picture) =
-  picture_unref(picture.raw)
-  deallocShared(picture.raw)
+  when compileOption("threads"):
+    if getThreadId() == picture.creatingThread:
+      doCleanup(picture)
+  else:
+    doCleanup(picture)
 
 proc getPicture*(decoder: Decoder): Picture =
   ## Retrieve one frame of decoded video data.
   ## If a BufferError is raised, not enough data is available- call send first and try again.
   ## If a DecodeError is raised, something is actually wrong with the decoding process.
-  var raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
+  #var raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
+  var raw = cast[ptr cPicture](c_calloc(1, sizeof(cPicture).csize_t))
   let r = get_picture(decoder.context, raw)
   if r < 0:
-    deallocShared(raw)
+    c_free(raw)
     if abs(r) == EAGAIN:
       raise newException(BufferError, "could not consume picture, must send more data first")
     raise newException(DecodeError, "Decoding error while consuming picture: $#" % r.formatError)
   new(result, cleanup)
   result.raw = raw
-
+  when compileOption("threads"):
+    result.creatingThread = getThreadId()
