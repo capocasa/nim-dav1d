@@ -33,6 +33,13 @@ discard updateYUVTexture(texture, nil,
 
 ```
 
+The C interface can be used directly as well. Please see the dav1d/wrapper documentation for details.
+
+Limitations
+-----------
+
+Note that memory is allocated by the library itself. This means that in multithreaded code- and it is likely this is required by your application- only shared heap garbage collectors are supported, but not the default refc. Specifically using the refc GC and channels will cause null pointer crashes, because the decoding thread will free the C memory but the main thread will try to access the decoded data. If you would like to use the default GC, consider using the C interface directly using dav1d/wrapper.
+
 Documentation
 -------------
 

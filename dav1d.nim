@@ -96,16 +96,12 @@ template send*(decoder: Decoder, encoded: ptr UncheckedArray[byte], len: int) =
   ## Convenience function to send array-and-length data to dav1d
   send(decoder, newData(encoded, len))
 
-template doCleanup(picture: Picture) =
-    picture_unref(picture.raw)
-    c_free(picture.raw)
-
 proc cleanup(picture: Picture) =
-  when compileOption("threads"):
-    if getThreadId() == picture.creatingThread:
-      doCleanup(picture)
-  else:
-    doCleanup(picture)
+  ## Cleanup function. Note that this does not support the standard refc when used with threads
+  ## and channels, because the container object is copied and this function is called more than
+  ## once from the different threads at the wrong times.
+  picture_unref(picture.raw)
+  c_free(picture.raw)
 
 proc getPicture*(decoder: Decoder): Picture =
   ## Retrieve one frame of decoded video data.
