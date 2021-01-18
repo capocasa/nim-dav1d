@@ -40,6 +40,8 @@ Limitations
 
 Note that memory is allocated by the library itself. This means that in multithreaded code- and it is likely this is required by your application- only shared heap garbage collectors are supported, but not the default refc. Specifically using the refc GC and channels will cause null pointer crashes, because the decoding thread will free the C memory but the main thread will try to access the decoded data. If you would like to use the default GC, consider using the C interface directly using dav1d/wrapper.
 
+It would be possible to support the refc GC and channels if a memory allocater were written in Nim. But then, each frame would need to be deep copied from the decoder thread to the main thread, which is a lot of work for a suboptimal result. Better to accept that the refc is just not a good match for the dav1d library, unless someone comes up with a really elegant solution.
+
 Documentation
 -------------
 
