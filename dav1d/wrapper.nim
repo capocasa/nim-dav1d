@@ -18,7 +18,7 @@ getHeader(
   "dav1d.h",
   giturl = "https://code.videolan.org/videolan/dav1d.git",
   outdir = baseDir,
-  mesonFlags = "--default-library=static"
+  mesonFlags = "--default-library=static -Denable_tools=false -Denable_tests=false"
 )
 
 cPlugin:

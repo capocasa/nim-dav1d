@@ -15,8 +15,10 @@ export cPicture, PictureParameters, PixelLayout, PIXEL_LAYOUT_I400, PIXEL_LAYOUT
 template `==`*(l1: PixelLayout, l2: PixelLayout): bool =
   l1.int == l2.int
 
-{.passL: "-lpthread -ldl".}
-  # dav1d uses pthread and dl
+when defined(linux):
+  {.passL: "-lpthread -ldl"}
+else:
+  {.passL: "-lpthread"}
 
 type
   InitError* = object of ValueError
@@ -36,8 +38,6 @@ type
   PictureObj* = object
     ## A container object for one frame of decoded video data
     raw*: ptr cPicture
-    when compileOption("threads"):
-      creatingThread*: int
   Picture* = ref PictureObj
     ## A memory safe reference to one frame of decoded video data
   Data* = ref cData
@@ -57,6 +57,8 @@ proc newDecoder*(): Decoder =
   ## Initialize a decoder
   new(result, cleanup)
   default_settings(result.settings.addr)
+  result.settings.n_frame_threads = 1
+  result.settings.n_tile_threads = 1
   result.settings.allocator.alloc_picture_callback = alloc
   result.settings.allocator.release_picture_callback = dealloc
   if 0 != open(result.context.addr, result.settings.addr):
@@ -120,5 +122,3 @@ proc getPicture*(decoder: Decoder): Picture =
     raise newException(DecodeError, "Decoding error while consuming picture: $#" % r.formatError)
   new(result, cleanup)
   result.raw = raw
-  when compileOption("threads"):
-    result.creatingThread = getThreadId()
