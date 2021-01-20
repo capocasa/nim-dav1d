@@ -4,14 +4,17 @@
 ## This Nim wrapper puts a low-cost memory safe high level on top of it. If the low-level API is required,
 ## applications can include dav1d/wrapper directly.
 
-import dav1d/wrapper
+import dav1d/wrapper, dav1d/system
 import system/ansi_c
 
 import posix
   # dav1d uses posix error codes
 import strutils
 
-export cPicture
+export cPicture, PictureParameters, PixelLayout, PIXEL_LAYOUT_I400, PIXEL_LAYOUT_I420, PIXEL_LAYOUT_I422, PIXEL_LAYOUT_I444
+
+template `==`*(l1: PixelLayout, l2: PixelLayout): bool =
+  l1.int == l2.int
 
 {.passL: "-lpthread -ldl".}
   # dav1d uses pthread and dl

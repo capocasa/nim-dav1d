@@ -35,6 +35,8 @@ discard updateYUVTexture(texture, nil,
 
 The C interface can be used directly as well. Please see the dav1d/wrapper documentation for details.
 
+Very few C interface symbols are exported from the main library. Please create a pull request with an adapted export statement dav1d.nim if you routinely require more.
+
 Limitations
 -----------
 
