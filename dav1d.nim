@@ -4,8 +4,7 @@
 ## This Nim wrapper puts a low-cost memory safe high level on top of it. If the low-level API is required,
 ## applications can include dav1d/wrapper directly.
 
-import dav1d/wrapper, dav1d/system
-import system/ansi_c
+import dav1d/wrapper, dav1d/mem
 
 import posix
   # dav1d uses posix error codes
@@ -58,6 +57,8 @@ proc newDecoder*(): Decoder =
   ## Initialize a decoder
   new(result, cleanup)
   default_settings(result.settings.addr)
+  result.settings.allocator.alloc_picture_callback = alloc
+  result.settings.allocator.release_picture_callback = dealloc
   if 0 != open(result.context.addr, result.settings.addr):
     raise newException(InitError, "Failed to initialize Dav1d av1 decoder")
 
@@ -104,17 +105,16 @@ proc cleanup(picture: Picture) =
   ## and channels, because the container object is copied and this function is called more than
   ## once from the different threads at the wrong times.
   picture_unref(picture.raw)
-  c_free(picture.raw)
+  deallocShared(picture.raw)
 
 proc getPicture*(decoder: Decoder): Picture =
   ## Retrieve one frame of decoded video data.
   ## If a BufferError is raised, not enough data is available- call send first and try again.
   ## If a DecodeError is raised, something is actually wrong with the decoding process.
-  #var raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
-  var raw = cast[ptr cPicture](c_calloc(1, sizeof(cPicture).csize_t))
+  var raw = cast[ptr cPicture](allocShared0(sizeof(cPicture)))
   let r = get_picture(decoder.context, raw)
   if r < 0:
-    c_free(raw)
+    deallocShared(raw)
     if abs(r) == EAGAIN:
       raise newException(BufferError, "could not consume picture, must send more data first")
     raise newException(DecodeError, "Decoding error while consuming picture: $#" % r.formatError)
