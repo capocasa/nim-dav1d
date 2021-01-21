@@ -65,7 +65,8 @@ proc alloc*(raw: ptr cPicture, cookie: pointer): cint {.cdecl} =
   let uv_sz = uv_stride * (aligned_h shr ss_ver.int)
   let pic_size = y_sz + 2 * uv_sz
 
-  var data = nd_alignedAlloc0(pic_size, PICTURE_ALIGN)
+  #var data = nd_alignedAlloc0(pic_size, PICTURE_ALIGN)
+  var data = allocShared0(pic_size)
   raw.allocator_data = data
   raw.data[0] = data
   raw.data[1] = if has_chroma: cast[pointer](cast[ByteAddress](data) + y_sz.ByteAddress) else: nil
@@ -74,6 +75,6 @@ proc alloc*(raw: ptr cPicture, cookie: pointer): cint {.cdecl} =
   return 0
 
 proc dealloc*(raw: ptr cPicture, cookie: pointer) {.cdecl} =
-  nd_alignedDealloc(raw.allocator_data, PICTURE_ALIGN)
-
+  #nd_alignedDealloc(raw.allocator_data, PICTURE_ALIGN)
+  deallocShared(raw.allocator_data)
 

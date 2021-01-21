@@ -21,6 +21,11 @@ getHeader(
   mesonFlags = "--default-library=static -Denable_tools=false -Denable_tests=false"
 )
 
+when defined(linux):
+  {.passL: "-lpthread -ldl"}
+else:
+  {.passL: "-lpthread"}
+
 cPlugin:
   import strutils
 

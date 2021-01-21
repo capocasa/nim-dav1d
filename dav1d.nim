@@ -15,11 +15,6 @@ export cPicture, PictureParameters, PixelLayout, PIXEL_LAYOUT_I400, PIXEL_LAYOUT
 template `==`*(l1: PixelLayout, l2: PixelLayout): bool =
   l1.int == l2.int
 
-when defined(linux):
-  {.passL: "-lpthread -ldl"}
-else:
-  {.passL: "-lpthread"}
-
 type
   InitError* = object of ValueError
     ## Error is raised if something about initializing the decoder doesn't work out
