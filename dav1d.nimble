@@ -9,8 +9,10 @@ license       = "BSD2"
 
 requires "nim >= 1.4.2"
 requires "https://github.com/capocasa/nimterop#a2af4b6"
+
+import distros
 foreignDep "meson"
-if detectOs(windows):
+if detectOs(Windows):
   foreignDep("mingw-w64-x86_64-toolchain")
   foreignDep("mingw-w64-x86_64-nasm")
 else:
